@@ -1,0 +1,17 @@
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+meta
+  name: quant-prod-strict
+spec:
+  podSelector: { matchLabels: { app: quant-engine } }
+  policyTypes: [Ingress, Egress]
+  ingress:
+    - from:
+        - namespaceSelector: { matchLabels: { name: monitoring } }
+        - namespaceSelector: { matchLabels: { name: ingress-nginx } }
+      ports: [{port: 8000, protocol: TCP}, {port: 9090, protocol: TCP}]
+  egress:
+    - to: [{ipBlock: {cidr: 10.0.0.0/8}}]  # 仅允许内网
+      ports:
+        - {port: 443, protocol: TCP}  # 外部 API
+        - {port: 9090, protocol: TCP} # Prometheus

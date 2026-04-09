@@ -1,0 +1,22 @@
+{{ define "wechat.default.message" }}
+{{ range .Alerts }}
+🚨 **[{{ .Status | toUpper }}] {{ .Labels.alertname }}**
+📍 实例: `{{ .Labels.instance }}`
+⚠️ 级别: `{{ .Labels.severity }}`
+📝 详情: {{ .Annotations.summary }}
+🕒 时间: {{ .StartsAt.Format "2006-01-02 15:04:05" }}
+{{ if .Annotations.description }}
+📖 描述: {{ .Annotations.description }}
+{{ end }}
+{{ end }}
+{{ end }}
+
+{{ define "dingtalk.default.message" }}
+{{ range .Alerts }}
+### {{ .Labels.alertname }}
+**级别**: {{ .Labels.severity }}
+**实例**: `{{ .Labels.instance }}`
+**摘要**: {{ .Annotations.summary }}
+**时间**: {{ .StartsAt.Format "2006-01-02 15:04:05" }}
+{{ end }}
+{{ end }}

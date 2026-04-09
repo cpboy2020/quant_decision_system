@@ -1,0 +1,13 @@
+groups:
+  - name: quant_critical
+    rules:
+      - alert: MaxDrawdownExceeded
+        expr: max_drawdown_pct < -0.08
+        for: 2m
+        labels: {severity: critical}
+        annotations: {summary: "回撤超限 {{ \$value }}"}
+      - alert: ModelICDecay
+        expr: model_rolling_ic < 0.03
+        for: 10m
+        labels: {severity: warning}
+        annotations: {summary: "IC衰减 {{ \$value }}"}

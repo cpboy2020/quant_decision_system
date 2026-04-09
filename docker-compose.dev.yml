@@ -1,0 +1,18 @@
+version: "3.9"
+services:
+  app:
+    build: .
+    ports: ["8000:8000", "5678:5678", "9090:9090"]
+    volumes: [".:/app:cached", "/app/__pycache__"]
+    environment: {ENV: development, MODE: paper, LOG_LEVEL: DEBUG}
+    command: ["python", "main.py"]
+  prometheus:
+    image: prom/prometheus:latest
+    ports: ["9091:9090"]
+    volumes: ["./config/monitoring/prometheus/prometheus.yml:/etc/prometheus/prometheus.yml:ro", "prom_/prometheus"]
+  grafana:
+    image: grafana/grafana:latest
+    ports: ["3000:3000"]
+    environment: {GF_SECURITY_ADMIN_PASSWORD: admin}
+    volumes: ["grafana_/var/lib/grafana", "./infra/grafana/datasources:/etc/grafana/provisioning/datasources:ro"]
+volumes: {prom_: {driver: local}, grafana_: {driver: local}}

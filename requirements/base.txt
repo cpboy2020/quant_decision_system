@@ -1,0 +1,12 @@
+pandas==2.2.1
+numpy==1.26.4
+lightgbm==4.3.0
+optuna==3.6.1
+shap==0.45.1
+tenacity==8.2.3
+diskcache==5.6.3
+pydantic==2.6.4
+prometheus-client==0.20.0
+fastapi==0.110.0
+uvicorn==0.29.0
+schedule==1.2.2

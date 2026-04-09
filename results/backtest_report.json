@@ -1,0 +1,16 @@
+{
+  "mode": "monte_carlo",
+  "metrics": {
+    "AnnRet": 0.0,
+    "Vol": 0.0,
+    "Sharpe": -Infinity,
+    "MaxDD": 0.0,
+    "Calmar": 0
+  },
+  "monte_carlo": {
+    "p_value": 1.0,
+    "significant": false,
+    "original_sharpe": -Infinity
+  },
+  "generated_at": "2026-04-09T12:17:04.869309"
+}

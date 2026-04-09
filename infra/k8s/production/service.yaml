@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+meta
+  name: quant-engine
+spec:
+  type: ClusterIP
+  ports:
+    - port: 80
+      targetPort: 8000
+      name: http
+    - port: 9090
+      targetPort: 9090
+      name: metrics
+  selector: { app: quant-engine }

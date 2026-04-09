@@ -1,0 +1,38 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "🧪 PyTest: 当前测试文件",
+      "type": "debugpy",
+      "request": "launch",
+      "module": "pytest",
+      "args": ["${file}", "-v", "--tb=short", "--cov=strategies.${fileBasenameNoExtension}", "--cov-report=term"],
+      "cwd": "${workspaceFolder}",
+      "env": {"PYTHONPATH": "${workspaceFolder}", "ENV": "development", "MODE": "paper"},
+      "justMyCode": false,
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "🚀 主程序: 模拟盘调试",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/main.py",
+      "args": ["--mode", "paper", "--env", "development"],
+      "cwd": "${workspaceFolder}",
+      "env": {"PYTHONPATH": "${workspaceFolder}", "ENV": "development", "MODE": "paper", "LOG_LEVEL": "DEBUG"},
+      "justMyCode": true,
+      "console": "integratedTerminal"
+    },
+    {
+      "name": "🔍 回测脚本: Monte Carlo 调试",
+      "type": "debugpy",
+      "request": "launch",
+      "program": "${workspaceFolder}/scripts/backtest_runner.py",
+      "args": ["--mode", "mc", "--days", "300"],
+      "cwd": "${workspaceFolder}",
+      "env": {"PYTHONPATH": "${workspaceFolder}", "ENV": "development"},
+      "justMyCode": true,
+      "console": "integratedTerminal"
+    }
+  ]
+}
