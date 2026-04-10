@@ -1,0 +1,24 @@
+name: Rego Policy PR Auditor Bot
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+    paths: ["policies/**/*.rego"]
+  workflow_dispatch:
+
+jobs:
+  audit-and-comment:
+    runs-on: ubuntu-latest
+    permissions: { contents: read, pull-requests: write }
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Python & Rego Tools
+        run: pip install PyGithub tree-sitter tree-sitter-rego
+      - name: 🔍 Run Semantic Diff
+        run: python rego-diff-scorer/rego_semantic_diff.py /tmp/base.rego policies/main.rego > diff_result.json || true
+        env:
+          POLICIES_DIR: "${{ github.workspace }}/policies"
+      - name: 🤖 Post to PR
+        if: steps.diff.outcome == 'success' || steps.diff.outcome == 'failure'
+        run: python infra/security/pr-diff-bot/pr_comment_bot.py "${{ github.repository }}" "${{ github.event.pull_request.number }}" diff_result.json
+        env:
+          GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}"

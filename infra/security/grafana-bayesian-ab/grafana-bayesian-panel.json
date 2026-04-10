@@ -1,0 +1,13 @@
+{
+  "__inputs": [{"name":"DS_BAYES_API","label":"Bayesian API","type":"datasource","pluginId":"grafana-simple-json-datasource"}],
+  "panels":[
+    {"datasource":{"uid":"${DS_BAYES_API}"},"gridPos":{"h":8,"w":8,"x":0,"y":0},"id":1,"title":"🎲 P(Variant A Wins) 贝叶斯概率","type":"stat",
+     "targets":[{"target":"p_a_wins"}],
+     "fieldConfig":{"defaults":{"thresholds":{"steps":[{"color":"blue","value":0.95}]},"color":{"mode":"thresholds"}}}},
+    {"datasource":{"uid":"${DS_BAYES_API}"},"gridPos":{"h":8,"w":8,"x":8,"y":0},"id":2,"title":"📈 CTR 提升幅度 (Expected Lift)","type":"gauge",
+     "targets":[{"target":"expected_lift"}],"fieldConfig":{"defaults":{"unit":"percent","thresholds":{"steps":[{"color":"red","value":null},{"color":"green","value":0}]}}}},
+    {"datasource":{"uid":"${DS_BAYES_API}"},"gridPos":{"h":8,"w":8,"x":16,"y":0},"id":3,"title":"✅ 显著性决策状态","type":"stat",
+     "targets":[{"target":"decision_ready"}]}
+  ],
+  "schemaVersion":39,"title":"🔍 Bayesian A/B 显著性检验面板","version":1
+}

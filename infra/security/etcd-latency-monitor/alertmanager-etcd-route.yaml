@@ -1,0 +1,17 @@
+route:
+  receiver: 'etcd-sync-ops'
+  routes:
+    - match:
+        component: cross-cluster-etcd
+      receiver: 'etcd-sync-ops'
+      repeat_interval: 15m
+      continue: false
+
+receivers:
+  - name: 'etcd-sync-ops'
+    webhook_configs:
+      - url: 'http://alertmanager-webhook-wecom:8060/wecom/critical'
+        send_resolved: true
+    pagerduty_configs:
+      - routing_key: '{{ .PAGERDUTY_KEY }}'
+        severity: '{{ .CommonLabels.severity }}'

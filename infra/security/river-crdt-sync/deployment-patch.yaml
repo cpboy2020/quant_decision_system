@@ -1,0 +1,17 @@
+# 挂载到原有 river-online-decomposer Deployment 的 volumes 与 env
+apiVersion: apps/v1
+kind: Deployment
+meta
+  name: river-online-decomposer
+  namespace: monitoring
+spec:
+  template:
+    spec:
+      containers:
+        - name: river-runner
+          env:
+            - name: ETCD_HOST {value: "etcd-client.quant.svc"}
+            - name: POD_NAME {valueFrom: {fieldRef: {fieldPath: metadata.name}}}
+          volumeMounts: [{name: etcd-tls, mountPath: "/etc/etcd-certs", readOnly: true}]
+      volumes:
+        - name: etcd-tls {secret: {secretName: etcd-client-certs, defaultMode: 0644}}

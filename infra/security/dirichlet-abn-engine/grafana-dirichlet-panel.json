@@ -1,0 +1,12 @@
+{
+  "__inputs": [{"name":"DS_PROMETHEUS","label":"Prometheus","type":"datasource","pluginId":"prometheus"}],
+  "panels":[
+    {"datasource":{"uid":"${DS_PROMETHEUS}"},"gridPos":{"h":8,"w":12,"x":0,"y":0},"id":1,"title":"📊 Dirichlet 后验 α 演化","type":"timeseries",
+     "targets":[{"expr":"dirichlet_alpha{arm=~\".*\"}","legendFormat":"{{arm}}","refId":"A"}]},
+    {"datasource":{"uid":"${DS_PROMETHEUS}"},"gridPos":{"h":8,"w":6,"x":12,"y":0},"id":2,"title":"🎲 当前流量分配权重","type":"bargauge",
+     "targets":[{"expr":"current_traffic_weight{arm=~\".*\"}","legendFormat":"{{arm}}"}]},
+    {"datasource":{"uid":"${DS_PROMETHEUS}"},"gridPos":{"h":8,"w":6,"x":18,"y":0},"id":3,"title":"📈 探索强度 κ (Concentration)","type":"stat",
+     "targets":[{"expr":"experiment_kappa"}]}
+  ],
+  "schemaVersion":39,"title":"🔍 Dirichlet A/B/n 实验面板","version":1
+}

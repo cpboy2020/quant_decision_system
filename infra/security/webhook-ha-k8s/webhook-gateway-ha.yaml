@@ -1,0 +1,72 @@
+# ================= Webhook Gateway 高可用部署 =================
+apiVersion: apps/v1
+kind: Deployment
+meta
+  name: webhook-gateway
+  namespace: quant-prod
+  labels: {app: webhook-gateway, component: alerting-router}
+spec:
+  replicas: 3
+  strategy: {rollingUpdate: {maxSurge: 1, maxUnavailable: 0}, type: RollingUpdate}
+  selector: {matchLabels: {app: webhook-gateway}}
+  template:
+    meta
+      labels: {app: webhook-gateway}
+      annotations: {prometheus.io/scrape: "true", prometheus.io/port: "9080", prometheus.io/path: "/metrics"}
+    spec:
+      serviceAccountName: webhook-sa
+      affinity:
+        podAntiAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm: {topologyKey: kubernetes.io/hostname, labelSelector: {matchLabels: {app: webhook-gateway}}}
+      containers:
+        - name: gateway
+          image: registry.quant.io/webhook-gateway:v1.2
+          command: ["python", "webhook_gateway.py"]
+          ports: [{containerPort: 9080, name: http}]
+          env:
+            - name: AUDIT_DB_PATH {value: "/data/audit.db"}
+            - name: GIN_MODE {value: "release"}
+          resources:
+            requests: {cpu: "200m", memory: "256Mi"}
+            limits: {cpu: "1000m", memory: "512Mi"}
+          startupProbe: {httpGet: {path: /health, port: 9080}, failureThreshold: 12, periodSeconds: 3}
+          livenessProbe: {httpGet: {path: /health, port: 9080}, initialDelaySeconds: 10, periodSeconds: 5, timeoutSeconds: 2}
+          readinessProbe: {httpGet: {path: /ready, port: 9080}, periodSeconds: 3, timeoutSeconds: 1}
+          volumeMounts: [{name: audit-vol, mountPath: /data}]
+      volumes:
+        - name: audit-vol {emptyDir: {medium: Memory, sizeLimit: "1Gi"}}
+---
+# ================= PodDisruptionBudget =================
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+meta
+  name: webhook-gateway-pdb
+  namespace: quant-prod
+spec:
+  minAvailable: 2
+  selector: {matchLabels: {app: webhook-gateway}}
+---
+# ================= HorizontalPodAutoscaler =================
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+meta
+  name: webhook-gateway-hpa
+  namespace: quant-prod
+spec:
+  scaleTargetRef: {apiVersion: apps/v1, kind: Deployment, name: webhook-gateway}
+  minReplicas: 3
+  maxReplicas: 10
+  metrics:
+    - type: Resource
+      resource: {name: cpu, target: {type: Utilization, averageUtilization: 65}}
+    - type: Resource
+      resource: {name: memory, target: {type: Utilization, averageUtilization: 75}}
+  behavior:
+    scaleUp:
+      stabilizationWindowSeconds: 30
+      policies: [{type: Pods, value: 2, periodSeconds: 30}]
+    scaleDown:
+      stabilizationWindowSeconds: 120
+      policies: [{type: Pods, value: 1, periodSeconds: 60}]

@@ -1,0 +1,26 @@
+# Envoy 网格配置补丁 (通过 Istio EnvoyFilter 注入)
+apiVersion: networking.istio.io/v1alpha3
+kind: EnvoyFilter
+meta
+  name: envoy-stats-compression
+  namespace: istio-system
+spec:
+  workloadSelector: { labels: { istio: ingressgateway } }
+  configPatches:
+    - applyTo: CLUSTER
+      match: { cluster: { service: "prometheus.monitoring.svc.cluster.local" } }
+      patch:
+        operation: MERGE
+        value:
+          stats_flush_interval: "30s"
+          stats_config:
+            use_all_default_tags: false
+            stats_tags:
+              - tag_name: "audit_path"
+                regex: "^/api/audit/(.*)$"
+            histogram_bucket_settings:
+              match: "audit_latency_us"
+              buckets: [50, 100, 250, 500, 1000, 2500, 5000]
+            stats_matcher:
+              inclusion_matcher:
+                prefix: "audit."

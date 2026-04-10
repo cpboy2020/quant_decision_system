@@ -1,0 +1,19 @@
+apiVersion: batch/v1
+kind: CronJob
+meta
+  name: etcd-optuna-tuner
+  namespace: istio-system
+spec:
+  schedule: "0 2 * * *"  # 每日凌晨 02:00 执行
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: optuna-tuner-sa
+          restartPolicy: Never
+          containers:
+            - name: tuner
+              image: python:3.11-slim
+              command: ["sh", "-c", "pip install optuna numpy prometheus-api-client kubernetes -q && python /app/optuna_rate_limiter.py"]
+              volumeMounts: [{name: script, mountPath: /app}]
+          volumes: [{name: script, configMap: {name: optuna-etcd-script}}]

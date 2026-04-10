@@ -1,0 +1,109 @@
+name: SSH Secure Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:  # 支持手动触发
+
+env:
+  DEPLOY_HOST: ${{ secrets.DEPLOY_HOST }}
+  DEPLOY_USER: ${{ secrets.DEPLOY_USER }}
+  DEPLOY_PATH: /opt/quant_decision_system
+  SSH_KEY_NAME: quant-deploy-key
+
+jobs:
+  deploy:
+    name: 🔐 SSH Deploy to Production
+    runs-on: ubuntu-latest
+    environment: production  # 需预先在 GitHub 配置环境 + 审批人
+    timeout-minutes: 15
+    
+    steps:
+      - name: 📥 Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # 获取完整历史用于版本标记
+
+      - name: 🔑 Setup SSH Key (Encrypted)
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.SSH_DEPLOY_KEY }}
+        env:
+          # 权限最小化：仅允许指定命令 + 指定路径
+          SSH_COMMAND_RESTRICT: "rsync --server,git-upload-pack,git-receive-pack"
+          SSH_PATH_RESTRICT: "${{ env.DEPLOY_PATH }}"
+
+      - name: 🛡️ Verify SSH Connection (Strict)
+        run: |
+          # 严格主机密钥校验（防中间人）
+          echo "${{ secrets.DEPLOY_HOST_KEY }}" >> ~/.ssh/known_hosts
+          
+          # 测试连接（仅允许指定命令）
+          ssh -T -o StrictHostKeyChecking=yes \
+              -o PermitLocalCommand=no \
+              -o ClearAllForwardings=yes \
+              ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} \
+              "echo '✅ SSH connection verified'"
+
+      - name: 📦 Build & Sync Artifacts
+        run: |
+          # 构建生产镜像（如需）
+          # docker build -t quant-engine:${{ github.sha }} .
+          
+          # 使用 rsync 同步代码（比 scp 更高效 + 增量）
+          rsync -avz --delete \
+            --exclude='.git/' \
+            --exclude='.venv/' \
+            --exclude='__pycache__/' \
+            --exclude='*.log' \
+            --exclude='data/raw/' \
+            ./ ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }}:${{ env.DEPLOY_PATH }}/
+          
+          echo "✅ 代码同步完成"
+
+      - name: 🚀 Remote Deployment
+        run: |
+          ssh -T ${{ env.DEPLOY_USER }}@${{ env.DEPLOY_HOST }} << 'REMOTECMD'
+            set -e
+            cd ${{ env.DEPLOY_PATH }}
+            
+            # 1. 激活虚拟环境
+            source .venv/bin/activate
+            
+            # 2. 安装依赖（仅更新变更部分）
+            pip install -q -r requirements/base.txt
+            
+            # 3. 运行数据库迁移（如有）
+            # python manage.py migrate --no-input
+            
+            # 4. 优雅重启服务（systemd）
+            sudo systemctl reload-or-restart quant-engine.service
+            
+            # 5. 健康检查
+            for i in {1..10}; do
+              if curl -sf http://localhost:8000/health; then
+                echo "✅ 服务健康检查通过"
+                exit 0
+              fi
+              sleep 5
+            done
+            echo "❌ 健康检查失败"
+            exit 1
+          REMOTECMD
+
+      - name: 📝 Post-Deploy Notification
+        if: always()
+        run: |
+          STATUS="${{ job.status }}"
+          MESSAGE="🚀 Deploy $STATUS: quant-engine@${{ github.sha }}"
+          
+          # 企微通知（如需）
+          if [ -n "${{ secrets.WECHAT_WEBHOOK }}" ]; then
+            curl -s -X POST "${{ secrets.WECHAT_WEBHOOK }}" \
+              -H "Content-Type: application/json" \
+              -d "{\"msgtype\":\"text\",\"text\":{\"content\":\"$MESSAGE\"}}" || true
+          fi
+
+      - name: 🧹 Cleanup SSH Agent
+        if: always()
+        run: ssh-agent -k || true

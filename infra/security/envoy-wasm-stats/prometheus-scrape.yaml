@@ -1,0 +1,28 @@
+apiVersion: v1
+kind: Service
+meta
+  name: envoy-stats
+  namespace: istio-system
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/path: "/stats/prometheus"
+    prometheus.io/port: "15090"
+spec:
+  selector: { app: istio-ingressgateway }
+  ports: [{port: 15090, name: stats, protocol: TCP}]
+---
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+meta
+  name: envoy-wasm-stats
+  namespace: istio-system
+spec:
+  selector: { matchLabels: { app: envoy-stats } }
+  endpoints:
+    - port: stats
+      path: /stats/prometheus
+      interval: 15s
+      metricRelabelings:
+        - sourceLabels: [__name__]
+          regex: "audit_.*"
+          action: keep

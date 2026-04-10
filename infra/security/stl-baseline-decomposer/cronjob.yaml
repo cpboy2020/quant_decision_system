@@ -1,0 +1,22 @@
+apiVersion: batch/v1
+kind: CronJob
+meta
+  name: stl-baseline-calculator
+  namespace: monitoring
+spec:
+  schedule: "0 */4 * * *"  # 每 4 小时重算
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          restartPolicy: Never
+          containers:
+            - name: decomposer
+              image: python:3.11-slim
+              command: ["sh", "-c", "pip install statsmodels pandas prometheus-client requests -q && python /app/stl_decomposer.py"]
+              env:
+                - name: PROM_URL {value: "http://prometheus.monitoring.svc:9090"}
+                - name: PUSHGATEWAY_URL {value: "http://pushgateway.monitoring.svc:9091"}
+              volumeMounts: [{name: script, mountPath: /app}]
+          volumes: [{name: script, configMap: {name: stl-decomposer-script}}]

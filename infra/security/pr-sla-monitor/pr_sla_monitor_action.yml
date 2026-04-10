@@ -1,0 +1,41 @@
+name: PR Approval SLA Monitor & Escalation
+on:
+  schedule: [{cron: '*/15 * * * *'}]  # 每 15 分钟扫描
+  workflow_dispatch:
+
+jobs:
+  sla-check:
+    runs-on: ubuntu-latest
+    permissions: { pull-requests: write, issues: write, contents: read }
+    steps:
+      - name: Check Open PRs & Calculate SLA
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          PUSHGATEWAY_URL: ${{ secrets.PUSHGATEWAY_URL || 'http://pushgateway.monitoring.svc:9091' }}
+        run: |
+          # 获取 Open 的 PR 列表
+          prs=$(gh pr list --state open --json number,createdAt,updatedAt,assignees,reviewRequests --limit 50)
+          echo "$prs" | jq -c '.[]' | while read -r pr; do
+            num=$(echo "$pr" | jq -r '.number')
+            created=$(echo "$pr" | jq -r '.createdAt')
+            updated=$(echo "$pr" | jq -r '.updatedAt')
+            
+            # 计算小时数
+            created_ts=$(date -d "$created" +%s)
+            now_ts=$(date +%s)
+            sla_hours=$(( (now_ts - created_ts) / 3600 ))
+            
+            # 推送至 Prometheus Pushgateway
+            cat <<METRICS | curl -s -X POST -H "Content-Type: text/plain" --data-binary @- "$PUSHGATEWAY_URL/metrics/job/pr_sla/instance/${{ github.repository }}"
+            # HELP pr_open_hours PR开启时长
+            # TYPE pr_open_hours gauge
+            pr_open_hours{pr_number="$num", repo="${{ github.repository }}"} $sla_hours
+            METRICS
+
+            # SLA 阈值判定与升级
+            if [[ $sla_hours -gt 48 ]]; then
+              echo "🚨 PR #$num SLA 超时 (>48h), 触发升级..."
+              gh pr comment $num -b "⏳ **SLA 告警**: 此 PR 已开启 $sla_hours 小时未合并。\n📢 已自动升级至 Tech Lead 与安全团队审批队列。\n👉 请立即 Review 或补充测试。"
+              gh issue create --title "🔴 PR SLA Breach: #$num ($sla_hours h)" --body "PR $num 超时未审批，需人工介入。" --label "sla-breach,priority/high" 2>/dev/null || true
+            fi
+          done

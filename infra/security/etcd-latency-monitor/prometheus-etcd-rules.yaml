@@ -1,0 +1,29 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+meta
+  name: etcd-sync-latency-rules
+  namespace: monitoring
+spec:
+  groups:
+    - name: etcd-sync-performance
+      rules:
+        - record: etcd_sync_p95_latency_5m
+          expr: histogram_quantile(0.95, sum(rate(etcd_sync_latency_seconds_bucket[5m])) by (le))
+        - record: etcd_sync_success_rate_5m
+          expr: rate(etcd_sync_events_total{status="success"}[5m]) / rate(etcd_sync_events_total[5m]) * 100
+    - name: etcd-sync-alerts
+      rules:
+        - alert: EtcdSyncHighLatency
+          expr: etcd_sync_p95_latency_5m > 2.0
+          for: 3m
+          labels: {severity: critical, component: cross-cluster-etcd}
+          annotations:
+            summary: "跨集群 etcd 同步 P95 延迟 > 2s"
+            action: "检查专线带宽、DR 集群磁盘 IO 与 Vault Transit 延迟"
+        - alert: EtcdSyncFailureRateHigh
+          expr: etcd_sync_success_rate_5m < 98
+          for: 5m
+          labels: {severity: warning, component: cross-cluster-etcd}
+          annotations:
+            summary: "etcd 同步成功率 < 98%"
+            action: "检查网络分区、mTLS 证书过期或目标 etcd 写入限流"

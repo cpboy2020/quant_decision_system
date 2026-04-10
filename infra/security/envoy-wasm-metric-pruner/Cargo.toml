@@ -1,0 +1,13 @@
+[package]
+name = "envoy-metric-pruner"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+proxy-wasm = "0.2.0"
+log = "0.4"
+regex = "1.9"
+lazy_static = "1.4"

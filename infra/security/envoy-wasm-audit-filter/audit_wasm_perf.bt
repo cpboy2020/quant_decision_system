@@ -1,0 +1,18 @@
+// bpftrace: 追踪 Envoy WASM 审计过滤器的 log/info 系统调用延迟分布
+// 运行: sudo bpftrace audit_wasm_perf.bt
+BEGIN { printf("📡 开始追踪 Envoy WASM 审计过滤器性能...\n"); }
+
+tracepoint:syscalls:sys_enter_write /comm == "envoy" && str(args->buf) ~ /WASM-AUDIT/ {
+    @start[tid] = nsecs;
+}
+
+tracepoint:syscalls:sys_exit_write /@start[tid]/ {
+    $delta_us = (nsecs - @start[tid]) / 1000;
+    @latency_us = hist($delta_us);
+    delete(@start[tid]);
+}
+
+END {
+    print(@latency_us);
+    printf("\n✅ 追踪结束. 理想情况下 P99 应 < 500μs\n");
+}

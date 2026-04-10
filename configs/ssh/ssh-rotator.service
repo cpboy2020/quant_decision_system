@@ -1,0 +1,20 @@
+[Unit]
+Description=Quant SSH Key Rotator Service
+After=network.target
+
+[Service]
+Type=oneshot
+User=quantuser
+Group=quantuser
+WorkingDirectory=/home/quantuser/quant_decision_system
+ExecStart=/home/quantuser/quant_decision_system/scripts/ssh_key_rotator.sh rotate github-company
+ExecStart=/home/quantuser/quant_decision_system/scripts/ssh_key_rotator.sh revoke github-company 180
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ssh-rotator
+
+# 安全限制
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/home/quantuser/.ssh /home/quantuser/quant_decision_system

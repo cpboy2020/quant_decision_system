@@ -1,0 +1,18 @@
+name: PR SLA Predictive Warning
+on:
+  schedule: [{cron: "0 9 * * 1-5"}]  # 工作日 09:00 推送预警
+  workflow_dispatch:
+
+jobs:
+  predict-and-notify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Prophet Env
+        run: pip install prophet pandas requests ecdsa
+      - name: 🔮 Run Predictive Model
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          REPO: ${{ github.repository }}
+          WECOM_WEBHOOK_URL: ${{ secrets.WECOM_SLA_WEBHOOK }}
+        run: python infra/security/pr-sla-predictor/pr_sla_predictor.py

@@ -1,0 +1,13 @@
+{
+  "__inputs": [{"name":"DS_PROMETHEUS","label":"Prometheus","type":"datasource","pluginId":"prometheus"}],
+  "panels":[
+    {"datasource":{"uid":"${DS_PROMETHEUS}"},"gridPos":{"h":8,"w":12,"x":0,"y":0},"id":1,"title":"⏱️ Open PR SLA 热力图 (按小时)","type":"heatmap",
+     "targets":[{"expr":"pr_open_hours","legendFormat":"PR #{{pr_number}}","refId":"A"}]},
+    {"datasource":{"uid":"${DS_PROMETHEUS}"},"gridPos":{"h":8,"w":12,"x":12,"y":0},"id":2,"title":"🔴 SLA 超时 PR 计数 (>48h)","type":"stat",
+     "targets":[{"expr":"count(pr_open_hours > 48)","legendFormat":"超时数"}],
+     "fieldConfig":{"defaults":{"thresholds":{"steps":[{"color":"green","value":null},{"color":"red","value":1}]}}}},
+    {"datasource":{"uid":"${DS_PROMETHEUS}"},"gridPos":{"h":8,"w":24,"x":0,"y":8},"id":3,"title":"📋 PR 审批时效趋势 (7d)","type":"timeseries",
+     "targets":[{"expr":"avg_over_time(pr_open_hours[24h])","legendFormat":"平均停留时间 (h)"}]}
+  ],
+  "schemaVersion":39,"title":"📊 GitHub PR 审批 SLA 监控面板","version":1
+}

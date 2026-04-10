@@ -1,0 +1,30 @@
+name: Policy Dependency Gate & Graphviz
+on:
+  pull_request:
+    paths:
+      - "policies/**/*.rego"
+      - "infra/security/policies/**/*.rego"
+  push:
+    branches: [main]
+
+jobs:
+  policy-audit:
+    runs-on: ubuntu-latest
+    permissions: { contents: read, pull-requests: write }
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Graphviz & Python Deps
+        run: |
+          sudo apt-get install -y graphviz graphviz-dev
+          pip install pydot tree-sitter tree-sitter-rego
+      - name: 🔍 Policy Impact Analysis & Visualization
+        run: python infra/security/pr-policy-gate/check_policy_impact.py
+        env:
+          POLICIES_DIR: "${{ github.workspace }}/policies"
+      - name: 📤 Upload Dependency Graph
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: policy-dependency-graph
+          path: policy_dependency_graph.png
+          retention-days: 30

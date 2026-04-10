@@ -1,0 +1,26 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+meta
+  name: webhook-adaptive-alerts
+  namespace: monitoring
+spec:
+  groups:
+    - name: webhook_anomaly_detection
+      rules:
+        - alert: WebhookTrafficSpikeAnomaly
+          expr: >
+            sum(rate(http_requests_total{path="/route"}[5m])) 
+            > (webhook_rps_5m_avg_1h + ${K_TRAFFIC} * webhook_rps_5m_stddev_1h + 1)
+          for: 3m
+          labels: {severity: warning, type: adaptive}
+          annotations:
+            summary: "流量突增偏离基线 {{ $value | humanize }} RPS (阈值: {{ $labels.threshold }})"
+            action: "检查上游 Alertmanager 路由风暴或 DDoS 攻击"
+
+        - alert: WebhookLatencyBaselineBreach
+          expr: histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{path="/route"}[5m])) by (le)) > (webhook_p99_baseline_1h * 1.5 + 0.2)
+          for: 5m
+          labels: {severity: critical, type: adaptive}
+          annotations:
+            summary: "P99 延迟持续超标基线 (当前: {{ $value | humanizeDuration }})"
+            action: "检查 HPA 扩缩容、DB 锁竞争或下游 Webhook 超时"

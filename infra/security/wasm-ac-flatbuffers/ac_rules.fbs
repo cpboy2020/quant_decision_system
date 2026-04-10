@@ -1,0 +1,11 @@
+// FlatBuffers Schema for WASM AC Rules (Zero-Copy Friendly)
+namespace ac_rules;
+
+table Snapshot {
+  version: uint32;
+  timestamp: uint64;
+  patterns: [string];  // UTF-8 零拷贝字符串切片
+  checksum: string;    // 完整性校验 (SHA256 Hex)
+}
+
+root_type Snapshot;

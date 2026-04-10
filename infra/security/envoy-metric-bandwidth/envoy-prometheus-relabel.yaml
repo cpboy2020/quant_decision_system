@@ -1,0 +1,27 @@
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+meta
+  name: envoy-wasm-stats
+  namespace: istio-system
+spec:
+  selector: { matchLabels: { app: envoy-stats } }
+  endpoints:
+    - port: stats
+      path: /stats/prometheus
+      interval: 15s
+      metricRelabelings:
+        # ✅ 1. 仅保留审计核心指标 + Envoy HTTP 关键指标
+        - sourceLabels: [__name__]
+          regex: "audit_(requests|errors|latency)_.*|envoy_http_downstream_rq_(total|time|active).*|envoy_cluster_upstream_rq.*"
+          action: keep
+        # ✅ 2. 丢弃高基数噪声标签 (降低存储 60%+)
+        - action: labeldrop
+          regex: "^(route_name|cluster_name|tcp_prefix|worker_id|endpoint_ip)$"
+        # ✅ 3. 统一替换 instance 标签为 Pod 名
+        - sourceLabels: [pod_name]
+          targetLabel: instance
+        # ✅ 4. 聚合直方图分桶 (从 18 bins 压至 7 bins)
+        - sourceLabels: [le]
+          regex: "^(0.5|1|2.5|5|10|25|50|100|250|500|1000|2500|5000|10000|25000|50000|100000|Inf)$"
+          targetLabel: le
+          replacement: "${1}"

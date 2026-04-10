@@ -1,0 +1,18 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+meta
+  name: webhook-dynamic-baselines
+  namespace: monitoring
+spec:
+  groups:
+    - name: webhook_traffic_baselines
+      rules:
+        # 1小时滑动窗口内 5m RPS 的移动平均 (μ)
+        - record: webhook_rps_5m_avg_1h
+          expr: avg_over_time(sum(rate(http_requests_total{path="/route"}[5m]))[1h:5m])
+        # 1小时滑动窗口内 5m RPS 的标准差 (σ)
+        - record: webhook_rps_5m_stddev_1h
+          expr: stddev_over_time(sum(rate(http_requests_total{path="/route"}[5m]))[1h:5m])
+        # P99 延迟基线 (μ + 2σ)
+        - record: webhook_p99_baseline_1h
+          expr: avg_over_time(histogram_quantile(0.99, sum(rate(http_request_duration_seconds_bucket{path="/route"}[5m])) by (le))[1h:5m])

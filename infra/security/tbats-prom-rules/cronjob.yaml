@@ -1,0 +1,21 @@
+apiVersion: batch/v1
+kind: CronJob
+meta
+  name: tbats-baseline-calculator
+  namespace: monitoring
+spec:
+  schedule: "0 3 * * *"
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      template:
+        spec:
+          serviceAccountName: prom-rule-patcher
+          restartPolicy: Never
+          containers:
+            - name: tbats-runner
+              image: python:3.11-slim
+              command: ["sh", "-c", "pip install tbats pandas kubernetes pyyaml requests -q && python /app/tbats_baseline_engine.py"]
+              env: [{name: PROM_URL, value: "http://prometheus.monitoring.svc:9090"}]
+              volumeMounts: [{name: script, mountPath: /app}]
+          volumes: [{name: script, configMap: {name: tbats-engine-script}}]

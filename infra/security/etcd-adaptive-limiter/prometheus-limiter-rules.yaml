@@ -1,0 +1,22 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+meta
+  name: etcd-rate-limiter-alerts
+spec:
+  groups:
+    - name: etcd-adaptive-limiter
+      rules:
+        - alert: EtcdSyncRateThrottled
+          expr: rate(etcd_sync_dropped_total[5m]) > 10
+          for: 3m
+          labels: {severity: warning, component: cross-cluster-etcd}
+          annotations:
+            summary: "etcd 同步限流丢弃率 > 10 ops/s"
+            action: "检查 DR 集群磁盘 IOPS 或专线带宽，背压算法已自动降频"
+        - alert: EtcdSyncRateDegraded
+          expr: etcd_sync_current_rate < 5
+          for: 5m
+          labels: {severity: info}
+          annotations:
+            summary: "自适应限流速率已降至 5 ops/s 以下"
+            action: "DR 环境可能存在写入瓶颈，请关注恢复情况"

@@ -1,0 +1,41 @@
+apiVersion: apps/v1
+kind: Deployment
+meta
+  name: cm-hotupdate-admin
+  namespace: quant-prod
+spec:
+  replicas: 2
+  selector: {matchLabels: {app: cm-hotupdate}}
+  template:
+    meta
+      labels: {app: cm-hotupdate}
+    spec:
+      serviceAccountName: cm-hotupdate-sa
+      containers:
+        - name: fastapi-admin
+          image: python:3.11-slim
+          command: ["pip", "install", "fastapi", "uvicorn", "pydantic", "kubernetes", "-q", "&&", "python", "/app/configmap_hotupdate_api.py"]
+          ports: [{containerPort: 8081}]
+          livenessProbe: {httpGet: {path: /health, port: 8081}}
+          volumeMounts: [{name: app-code, mountPath: /app}]
+        - name: kube-rbac-proxy
+          image: gcr.io/kubebuilder/kube-rbac-proxy:v0.15.0
+          args: ["--secure-listen-address=0.0.0.0:8443", "--upstream=http://127.0.0.1:8081/", "--logtostderr=true", "--v=3"]
+          ports: [{containerPort: 8443, name: https}]
+          volumeMounts: [{name: tls-certs, mountPath: /etc/rbac-proxy/tls, readOnly: true}]
+      volumes:
+        - name: app-code {configMap: {name: cm-hotupdate-scripts}}
+        - name: tls-certs {secret: {secretName: cm-hotupdate-tls}}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+meta
+  name: cm-hotupdate-role
+rules: [{apiGroups:[""], resources:["configmaps"], verbs:["get","patch"]}]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+meta
+  name: cm-hotupdate-binding
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: ClusterRole, name: cm-hotupdate-role}
+subjects: [{kind: ServiceAccount, name: cm-hotupdate-sa, namespace: quant-prod}]

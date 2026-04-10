@@ -1,0 +1,15 @@
+[Unit]
+Description=Quant SSH Key Rotator Timer
+Requires=ssh-rotator.service
+
+[Timer]
+# 每季度首日 02:00 执行轮换
+OnCalendar=*-01-01 02:00:00
+OnCalendar=*-04-01 02:00:00
+OnCalendar=*-07-01 02:00:00
+OnCalendar=*-10-01 02:00:00
+Persistent=true
+RandomizedDelaySec=1h  # 防集中请求
+
+[Install]
+WantedBy=timers.target

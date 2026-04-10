@@ -1,0 +1,47 @@
+apiVersion: batch/v1
+kind: CronJob
+meta
+  name: k-factor-self-learner
+  namespace: monitoring
+spec:
+  schedule: "0 2 * * 1"  # 每周一凌晨 02:00 执行
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 1
+  jobTemplate:
+    spec:
+      activeDeadlineSeconds: 600
+      template:
+        spec:
+          serviceAccountName: prom-rule-patcher
+          restartPolicy: Never
+          containers:
+            - name: learner
+              image: python:3.11-slim
+              command: ["sh", "-c", "pip install prometheus-api-client kubernetes scipy numpy -q && python /app/k_factor_learner.py"]
+              env:
+                - name: PROM_URL {value: "http://prometheus.monitoring.svc:9090"}
+                - name: TARGET_FPR {value: "0.05"}
+              volumeMounts: [{name: script, mountPath: /app}]
+          volumes:
+            - name: script
+              configMap: {name: k-factor-learner-script}
+---
+apiVersion: v1
+kind: ServiceAccount
+meta
+  name: prom-rule-patcher
+  namespace: monitoring
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+meta
+  name: prometheus-rule-patcher
+rules: [{apiGroups:["monitoring.coreos.com"], resources:["prometheusrules"], verbs:["get", "update"]}]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+meta
+  name: prometheus-rule-patcher-binding
+roleRef: {apiGroup: rbac.authorization.k8s.io, kind: ClusterRole, name: prometheus-rule-patcher}
+subjects: [{kind: ServiceAccount, name: prom-rule-patcher, namespace: monitoring}]

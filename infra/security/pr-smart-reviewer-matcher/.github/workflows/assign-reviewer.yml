@@ -1,0 +1,24 @@
+name: Smart Reviewer Assignment
+on:
+  pull_request: { types: [opened, synchronize, reopened] }
+
+jobs:
+  match-reviewers:
+    runs-on: ubuntu-latest
+    outputs:
+      reviewers: ${{ steps.match.outputs.REVIEWERS }}
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Env
+        run: pip install PyGithub
+      - name: 🔍 Match & Assign
+        id: match
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_REPOSITORY: ${{ github.repository }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        run: python infra/security/pr-smart-reviewer-matcher/matcher.py
+      - name: 🤝 Request Reviews
+        if: steps.match.outputs.REVIEWERS != ''
+        run: gh pr review-request ${{ github.event.pull_request.number }} --repo ${{ github.repository }} -r "${{ steps.match.outputs.REVIEWERS }}"
+        env: { GH_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
